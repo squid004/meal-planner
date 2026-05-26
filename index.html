@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meal Planner</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2d7a4f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Meal Planner">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav id="main-nav">
+    <button class="nav-tab active" data-view="recipes">
+      <span class="nav-icon">🍽</span>
+      <span class="nav-label">Recipes</span>
+    </button>
+    <button class="nav-tab" data-view="select">
+      <span class="nav-icon">✓</span>
+      <span class="nav-label">Select Meals</span>
+    </button>
+    <button class="nav-tab" data-view="shopping">
+      <span class="nav-icon">🛒</span>
+      <span class="nav-label">Shopping</span>
+    </button>
+    <button class="nav-tab" data-view="settings">
+      <span class="nav-icon">⚙</span>
+      <span class="nav-label">Settings</span>
+    </button>
+  </nav>
+
+  <main id="app">
+    <section id="view-recipes"  class="view active"></section>
+    <section id="view-select"   class="view"></section>
+    <section id="view-shopping" class="view"></section>
+    <section id="view-settings" class="view"></section>
+  </main>
+
+  <!-- Modal: Add / Edit Recipe -->
+  <div id="modal-recipe" class="modal hidden" role="dialog" aria-modal="true" aria-label="Recipe">
+    <div class="modal-overlay"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="modal-recipe-title">Add Recipe</h2>
+        <button class="modal-close" data-close="modal-recipe">&times;</button>
+      </div>
+      <div class="modal-tabs">
+        <button class="modal-tab active" data-tab="form">Form</button>
+        <button class="modal-tab" data-tab="paste">Paste & Parse</button>
+      </div>
+      <div class="modal-body">
+        <!-- Form tab -->
+        <div id="tab-form" class="tab-panel active">
+          <form id="recipe-form" autocomplete="off">
+            <input type="hidden" id="recipe-id">
+            <div class="field">
+              <label for="recipe-name">Recipe name *</label>
+              <input type="text" id="recipe-name" required placeholder="e.g. Roasted Chicken Thighs">
+            </div>
+            <div class="field">
+              <label for="recipe-url">Source URL</label>
+              <input type="url" id="recipe-url" placeholder="https://cooking.nytimes.com/...">
+            </div>
+            <div class="field">
+              <label>Season</label>
+              <div class="checkbox-group">
+                <label class="pill-check"><input type="checkbox" name="season" value="spring"> Spring</label>
+                <label class="pill-check"><input type="checkbox" name="season" value="summer"> Summer</label>
+                <label class="pill-check"><input type="checkbox" name="season" value="fall"> Fall</label>
+                <label class="pill-check"><input type="checkbox" name="season" value="winter"> Winter</label>
+                <label class="pill-check"><input type="checkbox" name="season" value="all-year"> All year</label>
+              </div>
+            </div>
+            <div class="field">
+              <label>Diet tags</label>
+              <div class="checkbox-group">
+                <label class="pill-check"><input type="checkbox" name="diet" value="vegetarian"> Vegetarian</label>
+                <label class="pill-check"><input type="checkbox" name="diet" value="vegan"> Vegan</label>
+                <label class="pill-check"><input type="checkbox" name="diet" value="gluten-free"> Gluten-free</label>
+                <label class="pill-check"><input type="checkbox" name="diet" value="dairy-free"> Dairy-free</label>
+                <label class="pill-check"><input type="checkbox" name="diet" value="quick"> Quick (&lt;30 min)</label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="recipe-notes">Notes</label>
+              <textarea id="recipe-notes" rows="2" placeholder="Any tips, variations, or reminders..."></textarea>
+            </div>
+
+            <!-- Ingredients -->
+            <div class="field">
+              <label>Ingredients</label>
+              <div id="ingredient-rows"></div>
+              <button type="button" id="add-ingredient-btn" class="btn-secondary btn-sm">+ Add ingredient</button>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="btn-ghost" data-close="modal-recipe">Cancel</button>
+              <button type="submit" class="btn-primary">Save recipe</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Paste tab -->
+        <div id="tab-paste" class="tab-panel">
+          <p class="hint">Paste a recipe's ingredient list below. One ingredient per line.<br>
+          Format: <em>amount unit ingredient</em> — e.g. "2 cups flour" or "1 lb chicken thighs"</p>
+          <textarea id="paste-input" rows="10" placeholder="2 lbs chicken thighs&#10;3 cloves garlic&#10;1 cup cherry tomatoes&#10;2 tbsp olive oil&#10;..."></textarea>
+          <button type="button" id="parse-btn" class="btn-primary">Parse ingredients</button>
+          <div id="parse-result" class="hidden">
+            <p class="hint">Review and assign store sections, then switch to the Form tab to complete the recipe details.</p>
+            <div id="parsed-rows"></div>
+            <button type="button" id="apply-parsed-btn" class="btn-primary">Apply to form</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Rate Recipe -->
+  <div id="modal-rating" class="modal hidden" role="dialog" aria-modal="true" aria-label="Rate recipe">
+    <div class="modal-overlay"></div>
+    <div class="modal-box modal-box--sm">
+      <div class="modal-header">
+        <h2>Rate this dish</h2>
+        <button class="modal-close" data-close="modal-rating">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="rating-recipe-name" class="rating-recipe-name"></p>
+        <div class="star-widget" id="star-widget">
+          <button type="button" class="star" data-value="1">★</button>
+          <button type="button" class="star" data-value="2">★</button>
+          <button type="button" class="star" data-value="3">★</button>
+          <button type="button" class="star" data-value="4">★</button>
+          <button type="button" class="star" data-value="5">★</button>
+        </div>
+        <div class="field">
+          <label for="rating-notes">Notes</label>
+          <textarea id="rating-notes" rows="3" placeholder="What did you think? Any tweaks?"></textarea>
+        </div>
+        <div class="field">
+          <label class="pill-check">
+            <input type="checkbox" id="make-again"> Would make again
+          </label>
+        </div>
+        <input type="hidden" id="rating-recipe-id">
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="modal-rating">Cancel</button>
+          <button type="button" id="save-rating-btn" class="btn-primary">Save rating</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: AI Suggestions -->
+  <div id="modal-ai" class="modal hidden" role="dialog" aria-modal="true" aria-label="AI recipe suggestions">
+    <div class="modal-overlay"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>Recipe suggestions</h2>
+        <button class="modal-close" data-close="modal-ai">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="ai-loading" class="hidden">
+          <div class="spinner"></div>
+          <p>Asking Claude for ideas...</p>
+        </div>
+        <div id="ai-result"></div>
+        <div id="ai-no-key" class="hidden">
+          <p>No Claude API key set. Go to <strong>Settings</strong> and paste your Anthropic API key to use this feature.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast hidden" role="alert"></div>
+
+  <!-- Scripts (load order matters: utils and db first, then views, then app) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/recipes.js"></script>
+  <script src="js/select.js"></script>
+  <script src="js/shopping.js"></script>
+  <script src="js/ratings.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
