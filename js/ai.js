@@ -5,7 +5,20 @@ const AI = {
 
   init() {},
 
-  // Called from Recipes view — renders suggestions inline into containerEl
+  // Load cached suggestions from DB and render — returns true if cache existed
+  async loadCached(containerEl) {
+    try {
+      const cached = await DB.getAppState('suggestions');
+      if (!cached || !cached.length) return false;
+      this._suggestions = cached;
+      this.renderSuggestions(cached, containerEl);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // Called from Recipes view — generates fresh suggestions and saves to DB
   async loadSuggestions(existingRecipes, containerEl) {
     const key = localStorage.getItem('claude_api_key');
     if (!key) {
@@ -69,6 +82,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
       const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
       const recipes = JSON.parse(sanitizeJSON(stripped));
       this._suggestions = recipes;
+      await DB.setAppState('suggestions', recipes).catch(() => {}); // save quietly
       this.renderSuggestions(recipes, containerEl);
     } catch (err) {
       containerEl.innerHTML = `<p style="color:var(--color-danger);">Error: ${esc(err.message)}</p>`;
@@ -77,6 +91,10 @@ Return ONLY the JSON array, no markdown, no explanation.`;
 
   renderSuggestions(recipes, containerEl) {
     containerEl.innerHTML = `
+      <div class="suggestions-header">
+        <span class="suggestions-label">Suggestions for ${capitalize(getCurrentSeason())}</span>
+        <button class="btn-ghost btn-sm" id="hide-suggestions-btn">Hide</button>
+      </div>
       <div class="suggestions-list">
         ${recipes.map((r, i) => `
           <div class="suggestion-card" data-index="${i}">
@@ -95,6 +113,9 @@ Return ONLY the JSON array, no markdown, no explanation.`;
 
     containerEl.querySelectorAll('.add-suggestion-btn').forEach(btn => {
       btn.addEventListener('click', () => this.addSuggestion(parseInt(btn.dataset.index), btn));
+    });
+    containerEl.querySelector('#hide-suggestions-btn')?.addEventListener('click', () => {
+      containerEl.classList.add('hidden');
     });
   },
 

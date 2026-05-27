@@ -11,8 +11,14 @@ const Recipes = {
 
   async onShow() {
     this._all = await DB.getRecipes().catch(() => []);
-    this._showingSuggestions = false;
     this.renderList();
+    // Auto-load cached suggestions if any exist
+    const container = document.getElementById('suggestions-container');
+    const hasCached = await AI.loadCached(container);
+    if (hasCached) {
+      container.classList.remove('hidden');
+      this._showingSuggestions = true;
+    }
   },
 
   // ── List view ─────────────────────────────────────────────────────────────────
@@ -62,21 +68,10 @@ const Recipes = {
 
     el.querySelector('#suggest-btn').addEventListener('click', () => {
       const container = document.getElementById('suggestions-container');
-      if (this._showingSuggestions) {
-        container.classList.add('hidden');
-        this._showingSuggestions = false;
-      } else {
-        container.classList.remove('hidden');
-        this._showingSuggestions = true;
-        AI.loadSuggestions(this._all, container);
-      }
-    });
-
-    // Re-trigger suggestions if they were showing
-    if (this._showingSuggestions) {
-      const container = document.getElementById('suggestions-container');
+      container.classList.remove('hidden');
+      this._showingSuggestions = true;
       AI.loadSuggestions(this._all, container);
-    }
+    });
   },
 
   applyFilter() {

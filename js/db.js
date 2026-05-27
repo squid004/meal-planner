@@ -202,6 +202,26 @@ const DB = {
     if (error) throw error;
   },
 
+  // ── App state (single overwritten row per key) ────────────────────────────────
+
+  async getAppState(key) {
+    this._check();
+    const { data } = await this._sb
+      .from('app_state')
+      .select('value')
+      .eq('key', key)
+      .maybeSingle();
+    return data?.value ?? null;
+  },
+
+  async setAppState(key, value) {
+    this._check();
+    const { error } = await this._sb
+      .from('app_state')
+      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if (error) throw error;
+  },
+
   async deleteShoppingItem(id) {
     this._check();
     const { error } = await this._sb.from('shopping_items').delete().eq('id', id);

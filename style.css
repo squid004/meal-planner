@@ -680,6 +680,20 @@ a { color: var(--color-accent); }
   margin-bottom: 20px;
 }
 
+.suggestions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.suggestions-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
 .suggestions-list {
   display: flex;
   flex-direction: column;
