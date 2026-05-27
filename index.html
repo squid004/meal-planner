@@ -140,13 +140,29 @@
       </div>
       <div class="modal-body">
         <p id="rating-recipe-name" class="rating-recipe-name"></p>
-        <div class="star-widget" id="star-widget">
-          <button type="button" class="star" data-value="1">★</button>
-          <button type="button" class="star" data-value="2">★</button>
-          <button type="button" class="star" data-value="3">★</button>
-          <button type="button" class="star" data-value="4">★</button>
-          <button type="button" class="star" data-value="5">★</button>
+
+        <div class="field">
+          <label>Taste</label>
+          <div class="star-widget" id="star-widget">
+            <button type="button" class="star" data-value="1">★</button>
+            <button type="button" class="star" data-value="2">★</button>
+            <button type="button" class="star" data-value="3">★</button>
+            <button type="button" class="star" data-value="4">★</button>
+            <button type="button" class="star" data-value="5">★</button>
+          </div>
         </div>
+
+        <div class="field">
+          <label>Difficulty</label>
+          <div class="difficulty-picker" id="difficulty-picker">
+            <button type="button" class="diff-btn" data-value="super easy">Super easy</button>
+            <button type="button" class="diff-btn" data-value="easy">Easy</button>
+            <button type="button" class="diff-btn" data-value="medium">Medium</button>
+            <button type="button" class="diff-btn" data-value="hard">Hard</button>
+            <button type="button" class="diff-btn" data-value="super hard">Super hard</button>
+          </div>
+        </div>
+
         <div class="field">
           <label for="rating-notes">Notes</label>
           <textarea id="rating-notes" rows="3" placeholder="What did you think? Any tweaks?"></textarea>

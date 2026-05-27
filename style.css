@@ -730,6 +730,29 @@ a { color: var(--color-accent); }
   margin-bottom: 16px;
 }
 
+/* ── Difficulty picker ─────────────────────────────────────────────────────── */
+.difficulty-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.diff-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 99px;
+  background: var(--color-surface);
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+.diff-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.diff-btn.active {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
 /* ── Recipe instructions ───────────────────────────────────────────────────── */
 .recipe-instructions {
   font-size: 0.92rem;

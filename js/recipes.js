@@ -170,9 +170,10 @@ const Recipes = {
 
     const ratingHTML = r.rating
       ? `<div style="margin-top:16px;">
-          <strong>Your rating:</strong> ${stars(r.rating)}
-          ${r.make_again ? '&nbsp;✓ Would make again' : ''}
-          ${r.rating_notes ? `<p style="font-size:0.9rem;color:var(--color-text-muted);margin-top:4px;">${esc(r.rating_notes)}</p>` : ''}
+          <strong>Taste:</strong> ${stars(r.rating)}
+          ${r.difficulty ? `&nbsp;&nbsp;<strong>Difficulty:</strong> ${esc(r.difficulty)}` : ''}
+          ${r.make_again ? '&nbsp;&nbsp;✓ Would make again' : ''}
+          ${r.rating_notes ? `<p style="font-size:0.9rem;color:var(--color-text-muted);margin-top:6px;">${esc(r.rating_notes)}</p>` : ''}
         </div>`
       : '';
 

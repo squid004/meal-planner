@@ -112,13 +112,14 @@ const DB = {
     if (error) throw error;
   },
 
-  async rateRecipe(id, rating, notes, makeAgain) {
+  async rateRecipe(id, rating, difficulty, notes, makeAgain) {
     this._check();
     const { error } = await this._sb
       .from('recipes')
       .update({
         rating:       rating,
-        rating_notes: notes    || null,
+        difficulty:   difficulty || null,
+        rating_notes: notes      || null,
         make_again:   !!makeAgain,
         rated_at:     new Date().toISOString(),
       })
