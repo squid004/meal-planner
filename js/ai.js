@@ -51,7 +51,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
         },
         body: JSON.stringify({
           model:      'claude-haiku-4-5-20251001',
-          max_tokens: 6000,
+          max_tokens: 8192,
           messages:   [{ role: 'user', content: prompt }],
         }),
       });
@@ -66,8 +66,8 @@ Return ONLY the JSON array, no markdown, no explanation.`;
       const text = data.content?.[0]?.text || '[]';
 
       // Strip markdown code fences if Claude wraps the JSON
-      const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-      const recipes = JSON.parse(clean);
+      const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      const recipes = JSON.parse(sanitizeJSON(stripped));
       this._suggestions = recipes;
       this.renderSuggestions(recipes, containerEl);
     } catch (err) {
@@ -166,6 +166,26 @@ ${text}`;
     const data = await res.json();
     const raw  = data.content?.[0]?.text || '{}';
     const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-    return JSON.parse(clean);
+    return JSON.parse(sanitizeJSON(clean));
   },
 };
+
+// Replace literal newlines/tabs inside JSON string values so JSON.parse doesn't choke
+function sanitizeJSON(str) {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (escaped)          { result += ch; escaped = false; continue; }
+    if (ch === '\\')      { result += ch; escaped = true;  continue; }
+    if (ch === '"')       { inString = !inString; result += ch; continue; }
+    if (inString) {
+      if (ch === '\n')    { result += '\\n';  continue; }
+      if (ch === '\r')    {                   continue; }
+      if (ch === '\t')    { result += '\\t';  continue; }
+    }
+    result += ch;
+  }
+  return result;
+}
