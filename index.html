@@ -86,6 +86,10 @@
               </div>
             </div>
             <div class="field">
+              <label for="recipe-instructions">Instructions</label>
+              <textarea id="recipe-instructions" rows="5" placeholder="1. Preheat oven to 400°F&#10;2. Season chicken..."></textarea>
+            </div>
+            <div class="field">
               <label for="recipe-notes">Notes</label>
               <textarea id="recipe-notes" rows="2" placeholder="Any tips, variations, or reminders..."></textarea>
             </div>
@@ -106,12 +110,18 @@
 
         <!-- Paste tab -->
         <div id="tab-paste" class="tab-panel">
-          <p class="hint">Paste a recipe's ingredient list below. One ingredient per line.<br>
-          Format: <em>amount unit ingredient</em> — e.g. "2 cups flour" or "1 lb chicken thighs"</p>
-          <textarea id="paste-input" rows="10" placeholder="2 lbs chicken thighs&#10;3 cloves garlic&#10;1 cup cherry tomatoes&#10;2 tbsp olive oil&#10;..."></textarea>
-          <button type="button" id="parse-btn" class="btn-primary">Parse ingredients</button>
+          <p class="hint">Paste the full recipe text — title, ingredients, instructions, everything. Claude will extract the structured data automatically.</p>
+          <textarea id="paste-input" rows="12" placeholder="Paste any recipe here — from NYT Cooking, Serious Eats, or anywhere else..."></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button type="button" id="parse-ai-btn" class="btn-primary">Parse with Claude</button>
+            <button type="button" id="parse-btn" class="btn-ghost btn-sm" title="Parse ingredient lines with basic text matching (no AI key required)">Basic parse</button>
+          </div>
+          <div id="parse-loading" class="hidden" style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+            <div class="spinner" style="width:20px;height:20px;border-width:2px;margin:0;"></div>
+            <span style="font-size:0.88rem;color:var(--color-text-muted);">Parsing recipe…</span>
+          </div>
           <div id="parse-result" class="hidden">
-            <p class="hint">Review and assign store sections, then switch to the Form tab to complete the recipe details.</p>
+            <p class="hint" style="margin-top:12px;">Review sections, then switch to the Form tab if you want to edit before saving.</p>
             <div id="parsed-rows"></div>
             <button type="button" id="apply-parsed-btn" class="btn-primary">Apply to form</button>
           </div>
@@ -150,27 +160,6 @@
         <div class="modal-actions">
           <button type="button" class="btn-ghost" data-close="modal-rating">Cancel</button>
           <button type="button" id="save-rating-btn" class="btn-primary">Save rating</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: AI Suggestions -->
-  <div id="modal-ai" class="modal hidden" role="dialog" aria-modal="true" aria-label="AI recipe suggestions">
-    <div class="modal-overlay"></div>
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2>Recipe suggestions</h2>
-        <button class="modal-close" data-close="modal-ai">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div id="ai-loading" class="hidden">
-          <div class="spinner"></div>
-          <p>Asking Claude for ideas...</p>
-        </div>
-        <div id="ai-result"></div>
-        <div id="ai-no-key" class="hidden">
-          <p>No Claude API key set. Go to <strong>Settings</strong> and paste your Anthropic API key to use this feature.</p>
         </div>
       </div>
     </div>

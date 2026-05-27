@@ -55,11 +55,12 @@ const DB = {
       const { error } = await this._sb
         .from('recipes')
         .update({
-          name:        recipeData.name,
-          source_url:  recipeData.source_url || null,
-          season_tags: recipeData.season_tags || [],
-          diet_tags:   recipeData.diet_tags   || [],
-          notes:       recipeData.notes       || null,
+          name:         recipeData.name,
+          source_url:   recipeData.source_url   || null,
+          season_tags:  recipeData.season_tags  || [],
+          diet_tags:    recipeData.diet_tags     || [],
+          notes:        recipeData.notes         || null,
+          instructions: recipeData.instructions  || null,
         })
         .eq('id', recipeId);
       if (error) throw error;
@@ -71,11 +72,12 @@ const DB = {
       const { data, error } = await this._sb
         .from('recipes')
         .insert({
-          name:        recipeData.name,
-          source_url:  recipeData.source_url || null,
-          season_tags: recipeData.season_tags || [],
-          diet_tags:   recipeData.diet_tags   || [],
-          notes:       recipeData.notes       || null,
+          name:         recipeData.name,
+          source_url:   recipeData.source_url   || null,
+          season_tags:  recipeData.season_tags  || [],
+          diet_tags:    recipeData.diet_tags     || [],
+          notes:        recipeData.notes         || null,
+          instructions: recipeData.instructions  || null,
         })
         .select()
         .single();

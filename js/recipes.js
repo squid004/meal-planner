@@ -3,7 +3,7 @@
 const Recipes = {
   _all: [],
   _filtered: [],
-  _detailId: null,
+  _showingSuggestions: false,
 
   init() {
     registerView('recipes', { onShow: () => Recipes.onShow() });
@@ -11,7 +11,7 @@ const Recipes = {
 
   async onShow() {
     this._all = await DB.getRecipes().catch(() => []);
-    this._detailId = null;
+    this._showingSuggestions = false;
     this.renderList();
   },
 
@@ -26,8 +26,12 @@ const Recipes = {
         <h1>Recipes</h1>
         <button class="btn-secondary btn-sm" id="suggest-btn">✦ Suggest</button>
       </div>
+
+      <!-- Inline AI suggestions container -->
+      <div id="suggestions-container" class="${this._showingSuggestions ? '' : 'hidden'}"></div>
+
       <div class="filter-bar">
-        <input type="text" id="recipe-search" placeholder="Search recipes…" value="">
+        <input type="text" id="recipe-search" placeholder="Search recipes…">
         <select id="season-filter">
           <option value="">All seasons</option>
           <option value="${season}" selected>${capitalize(season)} (now)</option>
@@ -51,11 +55,28 @@ const Recipes = {
 
     this.applyFilter();
 
-    el.querySelector('#recipe-search').addEventListener('input', () => this.applyFilter());
+    el.querySelector('#recipe-search').addEventListener('input',  () => this.applyFilter());
     el.querySelector('#season-filter').addEventListener('change', () => this.applyFilter());
-    el.querySelector('#diet-filter').addEventListener('change', () => this.applyFilter());
+    el.querySelector('#diet-filter').addEventListener('change',   () => this.applyFilter());
     el.querySelector('#add-recipe-btn').addEventListener('click', () => this.openAdd());
-    el.querySelector('#suggest-btn').addEventListener('click', () => AI.open(this._all));
+
+    el.querySelector('#suggest-btn').addEventListener('click', () => {
+      const container = document.getElementById('suggestions-container');
+      if (this._showingSuggestions) {
+        container.classList.add('hidden');
+        this._showingSuggestions = false;
+      } else {
+        container.classList.remove('hidden');
+        this._showingSuggestions = true;
+        AI.loadSuggestions(this._all, container);
+      }
+    });
+
+    // Re-trigger suggestions if they were showing
+    if (this._showingSuggestions) {
+      const container = document.getElementById('suggestions-container');
+      AI.loadSuggestions(this._all, container);
+    }
   },
 
   applyFilter() {
@@ -81,7 +102,7 @@ const Recipes = {
         <div class="empty-state">
           <div class="empty-icon">🍽</div>
           <p>${this._all.length === 0
-            ? 'No recipes yet. Hit + to add your first one!'
+            ? 'No recipes yet. Hit + to add your first one, or click ✦ Suggest!'
             : 'No recipes match your filters.'}</p>
         </div>`;
       return;
@@ -118,8 +139,7 @@ const Recipes = {
   // ── Detail view ───────────────────────────────────────────────────────────────
 
   async showDetail(id) {
-    this._detailId = id;
-    const r = await DB.getRecipe(id);
+    const r  = await DB.getRecipe(id);
     const el = document.getElementById('view-recipes');
 
     const seasonTags = (r.season_tags || []).map(s =>
@@ -143,12 +163,17 @@ const Recipes = {
         </table>`
       : '<p style="color:var(--color-text-muted);font-size:0.9rem;">No ingredients added.</p>';
 
+    const instructionsHTML = r.instructions
+      ? `<h2 style="font-size:1rem;margin:20px 0 6px;">Instructions</h2>
+         <div class="recipe-instructions">${esc(r.instructions).replace(/\n/g, '<br>')}</div>`
+      : '';
+
     const ratingHTML = r.rating
-      ? `<p style="margin-top:12px;">
+      ? `<div style="margin-top:16px;">
           <strong>Your rating:</strong> ${stars(r.rating)}
           ${r.make_again ? '&nbsp;✓ Would make again' : ''}
-        </p>
-        ${r.rating_notes ? `<p style="font-size:0.9rem;color:var(--color-text-muted);margin-top:4px;">${esc(r.rating_notes)}</p>` : ''}`
+          ${r.rating_notes ? `<p style="font-size:0.9rem;color:var(--color-text-muted);margin-top:4px;">${esc(r.rating_notes)}</p>` : ''}
+        </div>`
       : '';
 
     el.innerHTML = `
@@ -159,7 +184,7 @@ const Recipes = {
         </div>
         <div class="recipe-card-tags" style="margin-bottom:12px;">${seasonTags}${dietTags}</div>
         ${r.source_url ? `<p style="margin-bottom:12px;"><a href="${r.source_url}" target="_blank" rel="noopener">View original recipe ↗</a></p>` : ''}
-        ${r.notes ? `<p style="margin-bottom:16px;font-size:0.9rem;">${esc(r.notes)}</p>` : ''}
+        ${r.notes ? `<p style="margin-bottom:16px;font-size:0.9rem;color:var(--color-text-muted);">${esc(r.notes)}</p>` : ''}
 
         <div class="detail-actions">
           <button class="btn-primary" id="detail-add-list-btn">+ Add to shopping list</button>
@@ -168,26 +193,24 @@ const Recipes = {
           <button class="btn-ghost" id="detail-delete-btn" style="color:var(--color-danger)">Delete</button>
         </div>
 
-        <h2 style="font-size:1rem;margin:16px 0 4px;">Ingredients</h2>
+        <h2 style="font-size:1rem;margin:20px 0 4px;">Ingredients</h2>
         ${ingsHTML}
+        ${instructionsHTML}
         ${ratingHTML}
       </div>`;
 
-    el.querySelector('#back-btn').addEventListener('click', () => this.renderList());
-    el.querySelector('#detail-edit-btn').addEventListener('click', () => this.openEdit(r));
-    el.querySelector('#detail-rate-btn').addEventListener('click', () => Ratings.open(r));
+    el.querySelector('#back-btn').addEventListener('click',          () => this.renderList());
+    el.querySelector('#detail-edit-btn').addEventListener('click',   () => this.openEdit(r));
+    el.querySelector('#detail-rate-btn').addEventListener('click',   () => Ratings.open(r));
     el.querySelector('#detail-delete-btn').addEventListener('click', () => this.deleteRecipe(r.id, r.name));
     el.querySelector('#detail-add-list-btn').addEventListener('click', () => this.addSingleToList(r));
   },
 
   async addSingleToList(r) {
-    if (!r.ingredients?.length) {
-      showToast('No ingredients on this recipe to add.');
-      return;
-    }
+    if (!r.ingredients?.length) { showToast('No ingredients on this recipe to add.'); return; }
     const merged = mergeIngredients(r.ingredients);
     await DB.addIngredientsToList(merged.map(i => ({ ...i, recipe_ids: [r.id] })));
-    showToast(`Added ${r.name} to shopping list`);
+    showToast(`Added "${r.name}" to shopping list`);
   },
 
   async deleteRecipe(id, name) {
@@ -204,7 +227,6 @@ const Recipes = {
     this.resetForm();
     document.getElementById('modal-recipe-title').textContent = 'Add Recipe';
     openModal('modal-recipe');
-    // Reset to form tab
     document.querySelectorAll('#modal-recipe .modal-tab')[0].click();
   },
 
@@ -217,36 +239,37 @@ const Recipes = {
   },
 
   resetForm() {
-    document.getElementById('recipe-id').value     = '';
-    document.getElementById('recipe-name').value   = '';
-    document.getElementById('recipe-url').value    = '';
-    document.getElementById('recipe-notes').value  = '';
+    document.getElementById('recipe-id').value           = '';
+    document.getElementById('recipe-name').value         = '';
+    document.getElementById('recipe-url').value          = '';
+    document.getElementById('recipe-instructions').value = '';
+    document.getElementById('recipe-notes').value        = '';
     document.querySelectorAll('[name="season"]').forEach(cb => cb.checked = false);
-    document.querySelectorAll('[name="diet"]').forEach(cb => cb.checked = false);
-    document.getElementById('ingredient-rows').innerHTML = '';
+    document.querySelectorAll('[name="diet"]').forEach(cb   => cb.checked = false);
+    document.getElementById('ingredient-rows').innerHTML  = '';
     this._addIngredientRowHeader();
+
     document.getElementById('paste-input').value = '';
     document.getElementById('parse-result').classList.add('hidden');
+    document.getElementById('parse-loading').classList.add('hidden');
     document.getElementById('parsed-rows').innerHTML = '';
 
-    // Wire form submit
     const form = document.getElementById('recipe-form');
     form.onsubmit = null;
     form.addEventListener('submit', e => { e.preventDefault(); this.saveForm(); }, { once: true });
 
-    // Wire add ingredient button
     document.getElementById('add-ingredient-btn').onclick = () => this._addIngredientRow();
-
-    // Wire parse button
-    document.getElementById('parse-btn').onclick = () => this._parsePaste();
-    document.getElementById('apply-parsed-btn').onclick = () => this._applyParsed();
+    document.getElementById('parse-ai-btn').onclick       = () => this._parsePasteWithAI();
+    document.getElementById('parse-btn').onclick          = () => this._parsePasteBasic();
+    document.getElementById('apply-parsed-btn').onclick   = () => this._applyParsed();
   },
 
   populateForm(r) {
-    document.getElementById('recipe-id').value    = r.id;
-    document.getElementById('recipe-name').value  = r.name;
-    document.getElementById('recipe-url').value   = r.source_url || '';
-    document.getElementById('recipe-notes').value = r.notes || '';
+    document.getElementById('recipe-id').value           = r.id;
+    document.getElementById('recipe-name').value         = r.name;
+    document.getElementById('recipe-url').value          = r.source_url || '';
+    document.getElementById('recipe-instructions').value = r.instructions || '';
+    document.getElementById('recipe-notes').value        = r.notes || '';
 
     (r.season_tags || []).forEach(v => {
       const cb = document.querySelector(`[name="season"][value="${v}"]`);
@@ -257,7 +280,6 @@ const Recipes = {
       if (cb) cb.checked = true;
     });
 
-    const container = document.getElementById('ingredient-rows');
     this._addIngredientRowHeader();
     (r.ingredients || []).forEach(i => this._addIngredientRow(i));
   },
@@ -273,7 +295,7 @@ const Recipes = {
   },
 
   _addIngredientRow(data = {}) {
-    const container = document.getElementById('ingredient-rows');
+    const container  = document.getElementById('ingredient-rows');
     const sectionOpts = SECTIONS.map(s =>
       `<option value="${s}" ${data.store_section === s ? 'selected' : ''}>${sectionLabel(s)}</option>`
     ).join('');
@@ -292,8 +314,8 @@ const Recipes = {
 
   _collectIngredientRows() {
     return Array.from(document.querySelectorAll('#ingredient-rows .ingredient-row')).map(row => {
-      const inputs  = row.querySelectorAll('input');
-      const select  = row.querySelector('select');
+      const inputs = row.querySelectorAll('input');
+      const select = row.querySelector('select');
       return {
         amount:        inputs[0].value,
         unit:          inputs[1].value,
@@ -303,24 +325,78 @@ const Recipes = {
     }).filter(r => r.name.trim());
   },
 
-  _parsePaste() {
+  // AI-powered paste parsing
+  async _parsePasteWithAI() {
+    const text = document.getElementById('paste-input').value.trim();
+    if (!text) return;
+
+    const key = localStorage.getItem('claude_api_key');
+    if (!key) {
+      showToast('No Claude API key — using basic parse instead');
+      this._parsePasteBasic();
+      return;
+    }
+
+    const loadingEl = document.getElementById('parse-loading');
+    const resultEl  = document.getElementById('parse-result');
+    const btn       = document.getElementById('parse-ai-btn');
+
+    loadingEl.classList.remove('hidden');
+    resultEl.classList.add('hidden');
+    btn.disabled = true;
+
+    try {
+      const parsed = await AI.parseRecipe(text);
+
+      // Auto-populate name and instructions if the form fields are empty
+      if (parsed.name && !document.getElementById('recipe-name').value) {
+        document.getElementById('recipe-name').value = parsed.name;
+      }
+      if (parsed.instructions && !document.getElementById('recipe-instructions').value) {
+        document.getElementById('recipe-instructions').value = parsed.instructions;
+      }
+
+      // Show ingredients for section review
+      this._showParsedIngredients(parsed.ingredients || []);
+    } catch (err) {
+      showToast('Parse error: ' + err.message);
+    } finally {
+      loadingEl.classList.add('hidden');
+      btn.disabled = false;
+    }
+  },
+
+  // Fallback: basic regex parsing (no AI key needed)
+  _parsePasteBasic() {
     const text = document.getElementById('paste-input').value;
     if (!text.trim()) return;
     const parsed = parsePastedIngredients(text);
-    const container = document.getElementById('parsed-rows');
+    this._showParsedIngredients(parsed);
+  },
+
+  _showParsedIngredients(ingredients) {
+    const container  = document.getElementById('parsed-rows');
     const sectionOpts = SECTIONS.map(s => `<option value="${s}">${sectionLabel(s)}</option>`).join('');
-    container.innerHTML = parsed.map((p, i) => `
+
+    container.innerHTML = ingredients.map((p, i) => `
       <div class="parsed-row" data-index="${i}">
-        <span>${esc(p.raw)}</span>
+        <span>${esc(p.raw || [p.amount, p.unit, p.name].filter(Boolean).join(' '))}</span>
         <select data-index="${i}">${sectionOpts}</select>
       </div>`).join('');
-    container.dataset.parsed = JSON.stringify(parsed);
+
+    // Pre-select sections if Claude already set them
+    ingredients.forEach((p, i) => {
+      const sel = container.querySelector(`select[data-index="${i}"]`);
+      if (sel && p.store_section && p.store_section !== 'other') sel.value = p.store_section;
+    });
+
+    container.dataset.parsed = JSON.stringify(ingredients);
     document.getElementById('parse-result').classList.remove('hidden');
   },
 
   _applyParsed() {
     const container = document.getElementById('parsed-rows');
-    const parsed = JSON.parse(container.dataset.parsed || '[]');
+    const parsed    = JSON.parse(container.dataset.parsed || '[]');
     parsed.forEach((p, i) => {
       const sel = container.querySelector(`select[data-index="${i}"]`);
       p.store_section = sel?.value || 'other';
@@ -328,36 +404,35 @@ const Recipes = {
     document.getElementById('ingredient-rows').innerHTML = '';
     this._addIngredientRowHeader();
     parsed.forEach(p => this._addIngredientRow(p));
-    // Switch to form tab
     document.querySelectorAll('#modal-recipe .modal-tab')[0].click();
     document.getElementById('parse-result').classList.add('hidden');
   },
 
   async saveForm() {
     const recipeData = {
-      id:          document.getElementById('recipe-id').value || null,
-      name:        document.getElementById('recipe-name').value.trim(),
-      source_url:  document.getElementById('recipe-url').value.trim() || null,
-      notes:       document.getElementById('recipe-notes').value.trim() || null,
-      season_tags: Array.from(document.querySelectorAll('[name="season"]:checked')).map(c => c.value),
-      diet_tags:   Array.from(document.querySelectorAll('[name="diet"]:checked')).map(c => c.value),
+      id:           document.getElementById('recipe-id').value || null,
+      name:         document.getElementById('recipe-name').value.trim(),
+      source_url:   document.getElementById('recipe-url').value.trim() || null,
+      instructions: document.getElementById('recipe-instructions').value.trim() || null,
+      notes:        document.getElementById('recipe-notes').value.trim() || null,
+      season_tags:  Array.from(document.querySelectorAll('[name="season"]:checked')).map(c => c.value),
+      diet_tags:    Array.from(document.querySelectorAll('[name="diet"]:checked')).map(c => c.value),
     };
     const ingredients = this._collectIngredientRows();
 
     const btn = document.querySelector('#recipe-form [type="submit"]');
-    btn.disabled = true;
+    btn.disabled    = true;
     btn.textContent = 'Saving…';
 
     try {
       await DB.saveRecipe(recipeData, ingredients);
       closeModal('modal-recipe');
       showToast('Recipe saved');
-      await this.onShow(); // refresh list
-      // If we were editing from detail view, go back to list
+      await this.onShow();
     } catch (err) {
-      showToast('Error saving recipe: ' + err.message);
+      showToast('Error saving: ' + err.message);
     } finally {
-      btn.disabled = false;
+      btn.disabled    = false;
       btn.textContent = 'Save recipe';
     }
   },

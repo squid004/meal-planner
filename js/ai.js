@@ -1,53 +1,44 @@
 'use strict';
 
 const AI = {
-  init() {
-    // Nothing to wire at init time; modal is opened from Recipes view
-  },
+  _suggestions: [],
 
-  open(existingRecipes) {
+  init() {},
+
+  // Called from Recipes view — renders suggestions inline into containerEl
+  async loadSuggestions(existingRecipes, containerEl) {
     const key = localStorage.getItem('claude_api_key');
-    const resultEl  = document.getElementById('ai-result');
-    const loadingEl = document.getElementById('ai-loading');
-    const noKeyEl   = document.getElementById('ai-no-key');
-
-    resultEl.textContent  = '';
-    loadingEl.classList.add('hidden');
-    noKeyEl.classList.add('hidden');
-
-    openModal('modal-ai');
-
     if (!key) {
-      noKeyEl.classList.remove('hidden');
+      containerEl.innerHTML = `
+        <div class="suggestion-no-key">
+          No Claude API key set. Go to <strong>Settings</strong> to add one.
+        </div>`;
       return;
     }
 
-    this.fetchSuggestions(key, existingRecipes);
-  },
-
-  async fetchSuggestions(key, existingRecipes) {
-    const loadingEl = document.getElementById('ai-loading');
-    const resultEl  = document.getElementById('ai-result');
-
-    loadingEl.classList.remove('hidden');
+    containerEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;padding:24px 0;">
+        <div class="spinner"></div>
+        <span style="color:var(--color-text-muted);">Generating ${capitalize(getCurrentSeason())} recipe ideas…</span>
+      </div>`;
 
     const season = getCurrentSeason();
-    const names  = (existingRecipes || []).map(r => r.name).join('\n');
-    const prompt = `You are a helpful meal planning assistant. The current season is ${season}.
+    const existing = (existingRecipes || []).map(r => r.name).join('\n');
 
-${names ? `The user already has these recipes saved (do not suggest them again):\n${names}\n` : ''}
-Suggest 5 dinner recipes that are:
-- Seasonally appropriate for ${season}
-- Nutritionally varied (mix of proteins, vegetables, cuisines)
-- Realistic weeknight dinners (45 minutes or less of active cooking)
+    const prompt = `You are a meal planning assistant. The current season is ${season}.
 
-For each suggestion, provide:
-1. Recipe name
-2. One-sentence description
-3. Why it fits the season
-4. A recommended source to find the full recipe (e.g. NYT Cooking, Serious Eats, Smitten Kitchen, Food52, etc.)
+${existing ? `The user already has these recipes saved — do not suggest them:\n${existing}\n` : ''}
+Generate 10 dinner recipes that are seasonally appropriate for ${season}, nutritionally varied, and realistic weeknight meals (under 60 minutes).
 
-Format as a numbered list.`;
+Return ONLY a valid JSON array with exactly 10 objects. Each object must have these exact fields:
+- "name": string
+- "description": string (1-2 sentences)
+- "season": one of "spring", "summer", "fall", "winter", "all-year"
+- "diet_tags": array, only include applicable tags from ["vegetarian","vegan","gluten-free","dairy-free","quick"]
+- "instructions": string (numbered steps, be specific and complete)
+- "ingredients": array of objects each with: "amount" (string or null), "unit" (string or null), "name" (string), "store_section" (one of: produce, dairy, meat, seafood, pantry, frozen, bakery, beverages, other)
+
+Return ONLY the JSON array, no markdown, no explanation.`;
 
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -60,25 +51,121 @@ Format as a numbered list.`;
         },
         body: JSON.stringify({
           model:      'claude-haiku-4-5-20251001',
-          max_tokens: 1024,
+          max_tokens: 6000,
           messages:   [{ role: 'user', content: prompt }],
         }),
       });
 
-      loadingEl.classList.add('hidden');
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        resultEl.textContent = `Error from Claude API (${res.status}): ${err?.error?.message || res.statusText}`;
+        containerEl.innerHTML = `<p style="color:var(--color-danger);">Claude API error (${res.status}): ${err?.error?.message || res.statusText}</p>`;
         return;
       }
 
       const data = await res.json();
-      const text = data.content?.[0]?.text || '(no response)';
-      resultEl.textContent = text;
+      const text = data.content?.[0]?.text || '[]';
+
+      // Strip markdown code fences if Claude wraps the JSON
+      const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      const recipes = JSON.parse(clean);
+      this._suggestions = recipes;
+      this.renderSuggestions(recipes, containerEl);
     } catch (err) {
-      loadingEl.classList.add('hidden');
-      resultEl.textContent = `Network error: ${err.message}`;
+      containerEl.innerHTML = `<p style="color:var(--color-danger);">Error: ${esc(err.message)}</p>`;
     }
+  },
+
+  renderSuggestions(recipes, containerEl) {
+    containerEl.innerHTML = `
+      <div class="suggestions-list">
+        ${recipes.map((r, i) => `
+          <div class="suggestion-card" data-index="${i}">
+            <div class="suggestion-card-header">
+              <span class="suggestion-name">${esc(r.name)}</span>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                <span class="tag season-${r.season}">${capitalize(r.season)}</span>
+                ${(r.diet_tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}
+              </div>
+            </div>
+            <p class="suggestion-desc">${esc(r.description)}</p>
+            <p class="suggestion-meta">${(r.ingredients || []).length} ingredients</p>
+            <button class="btn-primary btn-sm add-suggestion-btn" data-index="${i}">+ Add to my recipes</button>
+          </div>`).join('')}
+      </div>`;
+
+    containerEl.querySelectorAll('.add-suggestion-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.addSuggestion(parseInt(btn.dataset.index), btn));
+    });
+  },
+
+  async addSuggestion(index, btn) {
+    const recipe = this._suggestions[index];
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+
+    try {
+      await DB.saveRecipe(
+        {
+          name:         recipe.name,
+          instructions: recipe.instructions || null,
+          season_tags:  recipe.season ? [recipe.season] : [],
+          diet_tags:    recipe.diet_tags || [],
+          notes:        null,
+          source_url:   null,
+        },
+        (recipe.ingredients || []).map(i => ({
+          name:          i.name,
+          amount:        i.amount,
+          unit:          i.unit,
+          store_section: i.store_section || 'other',
+        }))
+      );
+      btn.textContent = '✓ Added';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-ghost');
+      showToast(`"${recipe.name}" added to your recipes`);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = '+ Add to my recipes';
+      showToast('Error: ' + err.message);
+    }
+  },
+
+  // Parse a full pasted recipe using Claude — returns {name, instructions, ingredients[]}
+  async parseRecipe(text) {
+    const key = localStorage.getItem('claude_api_key');
+    if (!key) return null;
+
+    const prompt = `Extract the recipe from the following text and return a JSON object with exactly these fields:
+- "name": string (recipe name)
+- "instructions": string (full cooking instructions, preserve step numbering)
+- "ingredients": array of objects each with: "amount" (string or null), "unit" (string or null), "name" (string), "store_section" (one of: produce, dairy, meat, seafood, pantry, frozen, bakery, beverages, other)
+
+Return ONLY valid JSON, no markdown, no explanation.
+
+Recipe text:
+${text}`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key':                               key,
+        'anthropic-version':                       '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type':                            'application/json',
+      },
+      body: JSON.stringify({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 2048,
+        messages:   [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+
+    const data = await res.json();
+    const raw  = data.content?.[0]?.text || '{}';
+    const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    return JSON.parse(clean);
   },
 };

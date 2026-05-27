@@ -675,11 +675,70 @@ a { color: var(--color-accent); }
 }
 .key-indicator.set { background: var(--color-accent-light); color: var(--color-accent); }
 
-/* ── AI modal ──────────────────────────────────────────────────────────────── */
-#ai-result {
-  white-space: pre-wrap;
+/* ── Inline AI suggestions ─────────────────────────────────────────────────── */
+#suggestions-container {
+  margin-bottom: 20px;
+}
+
+.suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.suggestion-card {
+  background: var(--color-accent-light);
+  border: 1px solid #b8dfc8;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.suggestion-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.suggestion-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.suggestion-desc {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.suggestion-meta {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+}
+
+.suggestion-no-key {
+  padding: 14px 16px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin-bottom: 16px;
+}
+
+/* ── Recipe instructions ───────────────────────────────────────────────────── */
+.recipe-instructions {
   font-size: 0.92rem;
-  line-height: 1.65;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-top: 4px;
 }
 
 .spinner {
