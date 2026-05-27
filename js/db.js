@@ -4,8 +4,8 @@
 // Replace these two values after creating your Supabase project.
 // These are safe to commit — the anon key is designed for client-side use.
 const DB = {
-  SUPABASE_URL:  'PASTE_YOUR_SUPABASE_URL_HERE',
-  SUPABASE_ANON: 'PASTE_YOUR_SUPABASE_ANON_KEY_HERE',
+  SUPABASE_URL:  'https://ntkavxpmqvvaciakurcp.supabase.co',
+  SUPABASE_ANON: 'sb_publishable_BzG0bezsNdYFmaJG4qWMlg_LCl1OAyg',
   _sb: null,
 
   init() {
