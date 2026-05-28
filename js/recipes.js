@@ -160,7 +160,7 @@ const Recipes = {
 
     const instructionsHTML = r.instructions
       ? `<h2 style="font-size:1rem;margin:20px 0 6px;">Instructions</h2>
-         <div class="recipe-instructions">${esc(r.instructions).replace(/\n/g, '<br>')}</div>`
+         <div class="recipe-instructions">${formatInstructions(r.instructions)}</div>`
       : '';
 
     const ratingHTML = r.rating
@@ -436,6 +436,15 @@ const Recipes = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+function formatInstructions(text) {
+  return esc(
+    text
+      .replace(/\r\n/g, '\n')
+      .replace(/([^\n])\s*((?:\d+)[.)]\s)/g, '$1\n$2') // ensure numbered steps start on new line
+      .trim()
+  ).replace(/\n/g, '<br>');
+}
 function esc(s) {
   return String(s ?? '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
