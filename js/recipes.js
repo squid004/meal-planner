@@ -179,6 +179,7 @@ const Recipes = {
           <h1>${esc(r.name)}</h1>
         </div>
         <div class="recipe-card-tags" style="margin-bottom:12px;">${seasonTags}${dietTags}</div>
+        ${r.servings ? `<p style="margin-bottom:8px;font-size:0.9rem;color:var(--color-text-muted);">🍽 ${esc(r.servings)}</p>` : ''}
         ${r.source_url ? `<p style="margin-bottom:12px;"><a href="${r.source_url}" target="_blank" rel="noopener">View original recipe ↗</a></p>` : ''}
         ${r.notes ? `<p style="margin-bottom:16px;font-size:0.9rem;color:var(--color-text-muted);">${esc(r.notes)}</p>` : ''}
 
@@ -238,6 +239,7 @@ const Recipes = {
     document.getElementById('recipe-id').value           = '';
     document.getElementById('recipe-name').value         = '';
     document.getElementById('recipe-url').value          = '';
+    document.getElementById('recipe-servings').value     = '';
     document.getElementById('recipe-instructions').value = '';
     document.getElementById('recipe-notes').value        = '';
     document.querySelectorAll('[name="season"]').forEach(cb => cb.checked = false);
@@ -264,6 +266,7 @@ const Recipes = {
     document.getElementById('recipe-id').value           = r.id;
     document.getElementById('recipe-name').value         = r.name;
     document.getElementById('recipe-url').value          = r.source_url || '';
+    document.getElementById('recipe-servings').value     = r.servings || '';
     document.getElementById('recipe-instructions').value = r.instructions || '';
     document.getElementById('recipe-notes').value        = r.notes || '';
 
@@ -409,6 +412,7 @@ const Recipes = {
       id:           document.getElementById('recipe-id').value || null,
       name:         document.getElementById('recipe-name').value.trim(),
       source_url:   document.getElementById('recipe-url').value.trim() || null,
+      servings:     document.getElementById('recipe-servings').value.trim() || null,
       instructions: document.getElementById('recipe-instructions').value.trim() || null,
       notes:        document.getElementById('recipe-notes').value.trim() || null,
       season_tags:  Array.from(document.querySelectorAll('[name="season"]:checked')).map(c => c.value),

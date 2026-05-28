@@ -61,6 +61,7 @@ const DB = {
           diet_tags:    recipeData.diet_tags     || [],
           notes:        recipeData.notes         || null,
           instructions: recipeData.instructions  || null,
+          servings:     recipeData.servings      || null,
         })
         .eq('id', recipeId);
       if (error) throw error;
@@ -78,6 +79,7 @@ const DB = {
           diet_tags:    recipeData.diet_tags     || [],
           notes:        recipeData.notes         || null,
           instructions: recipeData.instructions  || null,
+          servings:     recipeData.servings      || null,
         })
         .select()
         .single();

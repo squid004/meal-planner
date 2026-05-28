@@ -47,6 +47,7 @@ Return ONLY a valid JSON array with exactly 10 objects. Each object must have th
 - "name": string
 - "description": string (1-2 sentences)
 - "season": one of "spring", "summer", "fall", "winter", "all-year"
+- "servings": string (e.g. "Serves 4" or "Makes 2–3 servings")
 - "diet_tags": array, only include applicable tags from ["vegetarian","vegan","gluten-free","dairy-free","quick"]
 - "instructions": string (numbered steps, be specific and complete)
 - "ingredients": array of objects each with: "amount" (string or null), "unit" (string or null), "name" (string), "store_section" (one of: produce, dairy, meat, seafood, pantry, frozen, bakery, beverages, other)
@@ -129,6 +130,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
         {
           name:         recipe.name,
           instructions: recipe.instructions || null,
+          servings:     recipe.servings     || null,
           season_tags:  recipe.season ? [recipe.season] : [],
           diet_tags:    recipe.diet_tags || [],
           notes:        null,
